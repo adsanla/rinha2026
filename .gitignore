@@ -1,0 +1,8 @@
+# objetos e binários locais (make)
+*.o
+/server
+/lb
+/healthcheck
+/score_one
+/verify-tier
+/tier_one
