@@ -1,5 +1,5 @@
 x-api: &api-common
-  image: ghcr.io/sl4ureano/rinha2026:megazord
+  image: ghcr.io/sl4ureano/rinha2026:megazord-c
   pull_policy: always
   environment:
     - FD_PASS=1
@@ -45,7 +45,7 @@ services:
       - PORT=8080
 
   lb:
-    image: ghcr.io/sl4ureano/rinha2026:megazord
+    image: ghcr.io/sl4ureano/rinha2026:megazord-c
     pull_policy: always
     cpuset: "1,3"
     command: ["./lb"]
