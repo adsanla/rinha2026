@@ -5,7 +5,7 @@ LDFLAGS = -flto -pthread
 
 LIB_SRCS = src/index_mmap.c src/index_quantize.c src/knn.c src/distance_avx2.c \
 	src/ingest_json.c src/ingest_features.c src/time_parse.c src/decision_tree.c src/tier_score.c \
-	src/http_handler.c src/http_response.c src/platform_scm.c src/platform_fd_gateway.c
+	src/fast_path.c src/http_handler.c src/http_response.c src/platform_scm.c src/platform_fd_gateway.c
 
 LIB_OBJS = $(LIB_SRCS:.c=.o)
 

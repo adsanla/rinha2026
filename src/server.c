@@ -105,8 +105,7 @@ static int env_truthy(const char *key)
 
 static int tier_only_mode(void)
 {
-    if (env_truthy("TIER_ONLY") || env_truthy("SKIP_INDEX")) return 1;
-    return env_truthy("FD_PASS");
+    return env_truthy("TIER_ONLY") || env_truthy("SKIP_INDEX");
 }
 
 int main(void)

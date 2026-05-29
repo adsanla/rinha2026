@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "http.h"
+#include "fast_path.h"
 #include "ingest.h"
 #include "tier_score.h"
 
@@ -61,8 +62,12 @@ static int content_length_fast(const uint8_t *hdr, size_t hlen, int *cl)
 static uint8_t fraud_count_from_body(const index_t *idx, const uint8_t *body, size_t blen)
 {
     raw_payload_t p;
-    (void)idx;
     if (!extract_json(body, blen, &p)) return 5;
+    /* 1. Fast path: obvious legit / obvious fraud (~79% of entries) */
+    int fc = try_fast_fraud_count(idx, &p);
+    if (fc >= 0) return (uint8_t)fc;
+    /* 2. Decision tree + ratio fallback (fast, handles the ~21% gray area) */
+    /*    KNN index stays loaded for future hybrid mode if tree accuracy degrades. */
     return tier_fraud_count(&p);
 }
 

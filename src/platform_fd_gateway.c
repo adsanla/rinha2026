@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "http.h"
+#include "fast_path.h"
 #include "index.h"
 #include "ingest.h"
 #include "tier_score.h"
@@ -111,7 +112,8 @@ static inline const uint8_t *fraud_response(const uint8_t *body, size_t blen, si
     if (!extract_json(body, blen, &p)) {
         fc = 5;
     } else {
-        fc = tier_fraud_count(&p);
+        int fast = try_fast_fraud_count(g_idx, &p);
+        fc = fast >= 0 ? (uint8_t)fast : tier_fraud_count(&p);
     }
     *resp_len = resp_len_for_count(fc);
     return resp_for_count(fc);
