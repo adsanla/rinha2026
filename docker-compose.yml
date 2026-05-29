@@ -1,14 +1,17 @@
-# Subir a partir da raiz do repo:
-#   docker compose -f VERSAO-c/docker-compose.yml -p versao-c up --build
+# Na raiz deste repo:
+#   docker compose -p versao-c up --build -d
 #
-# Benchmark k6 (rede do container lb — ver README):
-#   cd test && k6 run test.js  (com --network container:versao-c-lb-1)
+# Benchmark k6:
+#   docker run --rm --user root --network container:versao-c-lb-1 \
+#     -e BASE_URL=http://127.0.0.1:9999 \
+#     -v "c:/Users/sl4ur/Downloads/rinha2026/test:/test" -w /test \
+#     grafana/k6:latest run test.js
 
 services:
   lb:
     build:
-      context: ..
-      dockerfile: VERSAO-c/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     command: ["/app/lb"]
     environment:
       - LB_PORT=9999
@@ -40,8 +43,8 @@ services:
 
   api1:
     build:
-      context: ..
-      dockerfile: VERSAO-c/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     environment:
       - FD_PASS=1
       - CTRL_SOCK=/tmp/sockets/api1.sock
@@ -70,8 +73,8 @@ services:
 
   api2:
     build:
-      context: ..
-      dockerfile: VERSAO-c/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     network_mode: "none"
     environment:
       - FD_PASS=1

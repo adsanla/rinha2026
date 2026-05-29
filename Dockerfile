@@ -1,12 +1,14 @@
-# Contexto: raiz do repo (docker-compose usa context: ..)
+# Contexto: raiz do repo adsanla (docker compose build context: .)
 
 FROM --platform=linux/amd64 rust:1.84-bookworm AS index-builder
 
-WORKDIR /app
+WORKDIR /rinha
 ENV RUSTFLAGS="-C target-cpu=haswell"
 
-COPY Cargo.toml Cargo.lock* ./
-COPY src/ src/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && git clone --depth 1 https://github.com/sl4ureano/rinha2026.git .
 
 RUN printf 'fn main() {}\n' > src/main.rs \
     && printf 'fn main() {}\n' > src/lb.rs \
@@ -21,8 +23,8 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
 
-COPY --from=index-builder /app/target/release/build-index /app/build-index
-COPY resources/ resources/
+COPY --from=index-builder /rinha/target/release/build-index /app/build-index
+COPY --from=index-builder /rinha/resources/ resources/
 
 RUN if [ ! -f resources/references.json.gz ]; then \
       wget -q -O resources/references.json.gz \
@@ -39,7 +41,9 @@ FROM --platform=linux/amd64 debian:bookworm-slim AS c-builder
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY VERSAO-c/ ./
+COPY Makefile ./
+COPY include/ include/
+COPY src/ src/
 
 RUN make clean && make all
 
