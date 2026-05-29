@@ -180,7 +180,19 @@ No repositório **Rust** ([sl4ureano/rinha2026](https://github.com/sl4ureano/rin
 python scripts/gen_decision_tree.py
 ```
 
-Gera `src/search/decision_tree.rs`. Para atualizar o C, copie/regenere `src/decision_tree.c` e `include/decision_tree.h` a partir de `scripts/decision_tree.nodes` (ou estenda o script no repo Rust para emitir também os arquivos C).
+Gera `src/search/decision_tree.rs` e, por padrão, `c-tree/include/decision_tree.h` + `c-tree/src/decision_tree.c` (copie para este repo).
+
+Para escrever direto na raiz do clone C:
+
+```bash
+# bash
+C_TREE_DIR=/caminho/para/adsanla/rinha2026 python scripts/gen_decision_tree.py
+
+# PowerShell
+$env:C_TREE_DIR="C:\caminho\para\adsanla\rinha2026"; python scripts/gen_decision_tree.py
+```
+
+Ou: `python scripts/gen_decision_tree.py --c-dir /caminho/para/adsanla/rinha2026`
 
 ---
 
