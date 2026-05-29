@@ -1,6 +1,6 @@
 # Rinha 2026 — versão C (C11)
 
-Implementação **C11** da mesma arquitetura da versão **Rust**:
+Implementação **C** da mesma arquitetura da versão **Rust**:
 
 | Repositório | Stack |
 |-------------|--------|
