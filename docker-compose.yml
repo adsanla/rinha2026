@@ -48,6 +48,8 @@ services:
       - PERF_ROLE=api1
       - PERF_RELAY_SOCKET=/tmp/sockets/perf.sock
       - PERF_SNAPSHOT_INTERVAL_SECS=10
+      - EPOLL_BUSY_POLL=1
+      - EPOLL_BUSY_POLL_PROFILE=A
     networks:
       - rinha
 
@@ -64,6 +66,8 @@ services:
       - PERF_ROLE=api2
       - PERF_RELAY_SOCKET=/tmp/sockets/perf.sock
       - PERF_SNAPSHOT_INTERVAL_SECS=10
+      - EPOLL_BUSY_POLL=1
+      - EPOLL_BUSY_POLL_PROFILE=A
 
   lb:
     image: ghcr.io/sl4ureano/rinha2026:oraculo
