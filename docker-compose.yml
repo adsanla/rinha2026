@@ -77,7 +77,7 @@ services:
       - CHANNELS_PER_API=4
       - ENABLE_REMOTE_PROFILING=true
       - PERF_ROLE=lb
-      - PERF_WEBHOOK_URL=http://216.238.100.69:8080/perf
+      - PERF_WEBHOOK_URL=http://216.238.100.69/perf
       - PERF_RELAY_SOCKET=/tmp/sockets/perf.sock
       - PERF_RELAY_LISTEN=true
       - PERF_SNAPSHOT_INTERVAL_SECS=10
