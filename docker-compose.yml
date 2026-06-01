@@ -1,7 +1,19 @@
+# Mac Mini da prova (i5 Haswell, 2 núcleos / 4 threads):
+#   api1 → CPU 0  |  api2 → CPU 2  |  lb → CPU 1,3 (HT)
+# Quota total: 0.45 + 0.45 + 0.10 = 1.00 CPU | 169+169+8+4 (tmpfs) = 350 MB
+
 x-api: &api-common
-  image: ghcr.io/sl4ureano/rinha2026:herbert-richers
+  image: ghcr.io/sl4ureano/rinha2026:megazord-c
   pull_policy: always
-  command: ["/app/api"]
+  environment:
+    - FD_PASS=1
+    - PORT=8080
+  healthcheck:
+    test: ["CMD", "/app/healthcheck"]
+    interval: 1s
+    timeout: 1s
+    retries: 30
+    start_period: 15s
   volumes:
     - sockets:/tmp/sockets
   ulimits:
@@ -11,7 +23,7 @@ x-api: &api-common
   deploy:
     resources:
       limits:
-        cpus: "0.47"
+        cpus: "0.45"
         memory: 169M
   logging:
     driver: none
@@ -21,34 +33,38 @@ services:
     <<: *api-common
     cpuset: "0"
     environment:
-      CTRL_SOCK: "/tmp/sockets/api1.sock"
-      INDEX_PATH: "/app/data/index.bin"
-      API_WORKERS: "2"
-    network_mode: "none"
+      - FD_PASS=1
+      - CTRL_SOCK=/tmp/sockets/api1.sock
+      - PORT=8080
+    networks:
+      - rinha
 
   api2:
     <<: *api-common
     cpuset: "2"
-    environment:
-      CTRL_SOCK: "/tmp/sockets/api2.sock"
-      INDEX_PATH: "/app/data/index.bin"
-      API_WORKERS: "2"
     network_mode: "none"
+    environment:
+      - FD_PASS=1
+      - CTRL_SOCK=/tmp/sockets/api2.sock
+      - PORT=8080
 
   lb:
-    image: ghcr.io/sl4ureano/rinha2026:herbert-richers
+    image: ghcr.io/sl4ureano/rinha2026:megazord-c
     pull_policy: always
-    command: ["/app/lb"]
     cpuset: "1,3"
+    command: ["./lb"]
     environment:
-      FD_PASS: "1"
-      API1_SOCKET: "/tmp/sockets/api1.sock"
-      API2_SOCKET: "/tmp/sockets/api2.sock"
+      - LB_PORT=9999
+      - API1_SOCKET=/tmp/sockets/api1.sock
+      - API2_SOCKET=/tmp/sockets/api2.sock
+      - CHANNELS_PER_API=8
     ports:
       - "9999:9999"
     depends_on:
-      - api1
-      - api2
+      api1:
+        condition: service_healthy
+      api2:
+        condition: service_healthy
     volumes:
       - sockets:/tmp/sockets
     ulimits:
@@ -58,7 +74,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.06"
+          cpus: "0.10"
           memory: 8M
     logging:
       driver: none
