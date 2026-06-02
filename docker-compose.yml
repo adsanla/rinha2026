@@ -36,6 +36,7 @@ services:
       - FD_PASS=1
       - CTRL_SOCK=/tmp/sockets/api1.sock
       - PORT=8080
+      - MALLOC_ARENA_MAX=1
     networks:
       - rinha
 
@@ -47,6 +48,7 @@ services:
       - FD_PASS=1
       - CTRL_SOCK=/tmp/sockets/api2.sock
       - PORT=8080
+      - MALLOC_ARENA_MAX=1
 
   lb:
     image: ghcr.io/sl4ureano/rinha2026:megazord-c
