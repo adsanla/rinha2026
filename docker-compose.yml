@@ -23,8 +23,8 @@ x-api: &api-common
   deploy:
     resources:
       limits:
-        cpus: "0.45"
-        memory: 169M
+        cpus: "0.35"
+        memory: 165MB
   logging:
     driver: none
 
@@ -76,8 +76,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.10"
-          memory: 8M
+          cpus: "0.30"
+          memory: 20MB
     logging:
       driver: none
     networks:
