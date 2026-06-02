@@ -42,7 +42,7 @@ services:
 
   api2:
     <<: *api-common
-    cpuset: "2"
+    cpuset: "1"
     network_mode: "none"
     environment:
       - FD_PASS=1
