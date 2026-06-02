@@ -31,6 +31,16 @@ static int merchant_known(const raw_payload_t *p)
                            p->merchant_id_len);
 }
 
+/* merchant_known faz um memmem sobre known_merchants; obvious_legit e
+ * obvious_fraud precisam do mesmo valor. Memoiza por request (lazy: so calcula
+ * quando uma checagem barata anterior nao curto-circuitou). cache: -1 = ainda
+ * nao calculado. */
+static int merchant_known_cached(const raw_payload_t *p, int *cache)
+{
+    if (*cache < 0) *cache = merchant_known(p);
+    return *cache;
+}
+
 static int is_safe_mcc(const uint8_t *mcc, size_t len)
 {
     return (len == 4 && ((memcmp(mcc, "5411", 4) == 0) || (memcmp(mcc, "5812", 4) == 0) ||
@@ -58,25 +68,25 @@ static int is_risky_mcc(const index_t *idx, const uint8_t *mcc, size_t len)
     return 0;
 }
 
-static int obvious_legit(const raw_payload_t *p)
+static int obvious_legit(const raw_payload_t *p, int *known_cache)
 {
     if (p->amount > MAX_AMOUNT_LEGIT) return 0;
     float safe_avg = p->customer_avg_amount > 0.0f ? p->customer_avg_amount : 1.0f;
     if (p->amount / safe_avg > MAX_RATIO_LEGIT) return 0;
     if (p->installments > MAX_INSTALLMENTS_LEGIT) return 0;
     if (p->tx_count_24h > MAX_TX24H_LEGIT) return 0;
-    if (!merchant_known(p)) return 0;
+    if (!merchant_known_cached(p, known_cache)) return 0;
     if (p->km_from_home > MAX_KM_HOME_LEGIT) return 0;
     if (!is_safe_mcc(p->merchant_mcc, p->merchant_mcc_len)) return 0;
     return 1;
 }
 
-static int obvious_fraud(const index_t *idx, const raw_payload_t *p)
+static int obvious_fraud(const index_t *idx, const raw_payload_t *p, int *known_cache)
 {
     if (p->amount < MIN_AMOUNT_FRAUD) return 0;
     if (p->installments < MIN_INSTALLMENTS_FRAUD) return 0;
     if (p->tx_count_24h < MIN_TX24H_FRAUD) return 0;
-    if (merchant_known(p)) return 0;
+    if (merchant_known_cached(p, known_cache)) return 0;
     if (p->km_from_home < MIN_KM_HOME_FRAUD) return 0;
     if (!is_risky_mcc(idx, p->merchant_mcc, p->merchant_mcc_len)) return 0;
     return 1;
@@ -84,7 +94,8 @@ static int obvious_fraud(const index_t *idx, const raw_payload_t *p)
 
 int try_fast_fraud_count(const index_t *idx, const raw_payload_t *p)
 {
-    if (obvious_legit(p)) return 0;
-    if (obvious_fraud(idx, p)) return 5;
+    int known_cache = -1;
+    if (obvious_legit(p, &known_cache)) return 0;
+    if (obvious_fraud(idx, p, &known_cache)) return 5;
     return -1;
 }

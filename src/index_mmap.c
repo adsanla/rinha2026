@@ -132,23 +132,23 @@ void index_warmup(index_t *idx)
     }
 
     const uint8_t *d = idx->data;
-    const size_t sz = idx->size;
 
     volatile uint64_t sum = 0;
-
-    // Touch one byte per page across the whole mapping (page faults upfront).
     const size_t page = 4096;
-    for (size_t off = 0; off < sz; off += page) {
-        sum += d[off];
-    }
 
-    // Extra touches in the hottest regions to improve locality.
-    const size_t hot_start = (size_t)idx->vectors_off;
-    const size_t hot_end = sz;
-    const size_t stride = 64;
-    for (size_t off = hot_start; off < hot_end; off += stride) {
-        sum += d[off];
-    }
+    /* O scoring ao vivo so le o cabecalho/metadados e a tabela de MCC. A regiao
+     * de vetores k-NN (o grosso, ~91 MB) NAO e lida em runtime (so pelo score_one
+     * offline). Por isso aquecemos apenas [0, vectors_off) + a tabela de MCC, em
+     * vez do arquivo inteiro: evita ~91 MB de RSS residente e o storm de
+     * page-fault no boot. Se o modo hibrido k-NN for reativado, as paginas dos
+     * vetores entram sob demanda via fault normal. */
+    size_t head_end = (size_t)idx->vectors_off;
+    for (size_t off = 0; off < head_end; off += page) sum += d[off];
+
+    size_t mcc_start = (size_t)idx->mcc_table_off;
+    size_t mcc_end = mcc_start + (size_t)IDX_MCC_TABLE_SZ * 2;
+    for (size_t off = mcc_start; off < mcc_end; off += page) sum += d[off];
+    sum += d[mcc_end - 1];
 
     idx->ready = 1;
     if (sum == 0xFFFFFFFFFFFFFFFFull) {

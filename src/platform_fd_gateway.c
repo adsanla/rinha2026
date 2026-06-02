@@ -33,6 +33,7 @@ extern int scm_recv_fd_nonblock(int control_fd);
 
 static const index_t *g_idx;
 static int g_epfd = -1;
+static int g_busy_poll_us = 0; /* 0 = desligado (default); >0 via env BUSY_POLL_US */
 
 typedef struct {
     uint8_t buf[BUF_CAP];
@@ -283,6 +284,15 @@ static void accept_from_lb(int ctrl_fd)
         setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
         setsockopt(client_fd, IPPROTO_TCP, TCP_QUICKACK, &one, sizeof(one));
 
+        /* Busy-poll opt-in (env BUSY_POLL_US, em microssegundos). DESLIGADO por
+         * padrao: busy-poll reduz latencia de wakeup mas queima CPU, o que pode
+         * estourar o teto de 0.45 CPU/servico e prejudicar a API irma. So ligar
+         * em ambiente onde o gerador de carga roda fora da maquina. */
+        if (g_busy_poll_us > 0) {
+            setsockopt(client_fd, SOL_SOCKET, SO_BUSY_POLL, &g_busy_poll_us,
+                       sizeof(g_busy_poll_us));
+        }
+
         conn_t *c = get_conn(client_fd);
         if (!c) { close(client_fd); continue; }
 
@@ -379,8 +389,21 @@ int fd_gateway_run(const index_t *idx, const char *sock_path)
 {
     g_idx = idx;
 
-    /* mlockall for memory pinning */
-    mlockall(MCL_CURRENT | MCL_FUTURE);
+    /* Pin de memoria direcionado. NAO usamos mlockall(MCL_CURRENT|MCL_FUTURE)
+     * porque (a) MCL_CURRENT forcaria residencia de TODO o mmap, inclusive os
+     * ~91 MB de vetores k-NN que o scoring ao vivo nem le, e (b) MCL_FUTURE
+     * pina TODA alocacao futura (buffers de conexao etc.), o que sob o cgroup
+     * de memoria da submissao derruba conexoes em carga (EOF). Em vez disso,
+     * pinamos so o que o runtime realmente toca: cabecalho/metadados + tabela
+     * de MCC. Os vetores ficam demand-paged (nunca lidos em runtime). */
+    if (idx && idx->data && idx->size) {
+        mlock(idx->data, (size_t)idx->vectors_off);
+        mlock(idx->data + idx->mcc_table_off, (size_t)IDX_MCC_TABLE_SZ * 2);
+    }
+
+    const char *bp = getenv("BUSY_POLL_US");
+    g_busy_poll_us = (bp && *bp) ? atoi(bp) : 0;
+    if (g_busy_poll_us < 0) g_busy_poll_us = 0;
 
     signal(SIGPIPE, SIG_IGN);
 
