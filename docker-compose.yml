@@ -1,98 +1,61 @@
 x-api: &api-common
-  image: ghcr.io/sl4ureano/rinha2026:ultimate
-  pull_policy: always
-  environment:
-    - FD_PASS=1
-    - PORT=8080
-  healthcheck:
-    test: ["CMD", "/app/healthcheck"]
-    interval: 1s
-    timeout: 1s
-    retries: 30
-    start_period: 15s
+  image: ghcr.io/sl4ureano/rinha2026:super-go
   volumes:
-    - sockets:/tmp/sockets
+    - sockets:/sockets
+  deploy:
+    resources:
+      limits:
+        cpus: '0.45'
+        memory: 155M
   ulimits:
     nofile:
       soft: 65535
       hard: 65535
-  deploy:
-    resources:
-      limits:
-        cpus: "0.35"
-        memory: 169M
-  logging:
-    driver: none
+    memlock:
+      soft: -1
+      hard: -1
+  restart: unless-stopped
 
 services:
+
   api1:
     <<: *api-common
+    container_name: rinha_api1
     cpuset: "0"
     environment:
-      - FD_PASS=1
-      - CTRL_SOCK=/tmp/sockets/api1.sock
-      - PORT=8080
-      - MALLOC_ARENA_MAX=1
-      - EPOLL_BUSY_POLL_US=100
-      - EPOLL_PREFER_BUSY_POLL=1
-      - EPOLL_BUSY_POLL_BUDGET=8
-    networks:
-      - rinha
+      - SOCKET_PATH=/sockets/api1.sock
 
   api2:
     <<: *api-common
+    container_name: rinha_api2
     cpuset: "1"
-    network_mode: "none"
     environment:
-      - FD_PASS=1
-      - CTRL_SOCK=/tmp/sockets/api2.sock
-      - PORT=8080
-      - MALLOC_ARENA_MAX=1
-      - EPOLL_BUSY_POLL_US=100
-      - EPOLL_PREFER_BUSY_POLL=1
-      - EPOLL_BUSY_POLL_BUDGET=8
+      - SOCKET_PATH=/sockets/api2.sock
 
   lb:
-    image: ghcr.io/sl4ureano/rinha2026:ultimate
-    pull_policy: always
-    cpuset: "2,3"
+    image: ghcr.io/sl4ureano/rinha2026:super-go
+    container_name: rinha_lb
     command: ["./lb"]
-    environment:
-      - LB_PORT=9999
-      - API1_SOCKET=/tmp/sockets/api1.sock
-      - API2_SOCKET=/tmp/sockets/api2.sock
-      - CHANNELS_PER_API=8
+    cpuset: "2,3"
+    depends_on:
+      - api1
+      - api2
+    volumes:
+      - sockets:/sockets
     ports:
       - "9999:9999"
-    depends_on:
-      api1:
-        condition: service_healthy
-      api2:
-        condition: service_healthy
-    volumes:
-      - sockets:/tmp/sockets
+    environment:
+      - UPSTREAMS=/sockets/api1.sock,/sockets/api2.sock,/sockets/api1.sock,/sockets/api2.sock,/sockets/api1.sock,/sockets/api2.sock,/sockets/api1.sock,/sockets/api2.sock
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 40M
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
-    deploy:
-      resources:
-        limits:
-          cpus: "0.30"
-          memory: 8M
-    logging:
-      driver: none
-    networks:
-      - rinha
+    restart: unless-stopped
 
 volumes:
   sockets:
-    driver: local
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
-      o: size=4m,mode=0777
-
-networks:
-  rinha:
-    driver: bridge
